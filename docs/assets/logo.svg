@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 80" role="img" aria-labelledby="title description">
+  <title id="title">HookShield</title>
+  <desc id="description">A shield containing a returning webhook arrow followed by the HookShield wordmark.</desc>
+  <rect x="8" y="8" width="64" height="64" rx="14" fill="#17243b"/>
+  <path d="M40 18 57 25v13c0 11-6.5 19.4-17 24-10.5-4.6-17-13-17-24V25l17-7Z" fill="none" stroke="#fff" stroke-width="4" stroke-linejoin="round"/>
+  <path d="M31 39h10a6 6 0 1 0 0-12h-2M34 34l-5 5 5 5" fill="none" stroke="#75c1bd" stroke-width="4" stroke-linecap="round" stroke-linejoin="round"/>
+  <text x="91" y="51" fill="#182235" font-family="Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="32" font-weight="500" letter-spacing="-1">Hook<tspan font-weight="750">Shield</tspan></text>
+</svg>
