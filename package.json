@@ -1,0 +1,32 @@
+{
+  "name": "hookshield",
+  "version": "0.1.0",
+  "private": true,
+  "description": "A local-first webhook security inbox for inspecting signatures, replay attempts, and delivery decisions.",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "pnpm -r build",
+    "demo": "node scripts/demo.mjs",
+    "demo:seed": "tsx apps/api/src/seed.ts",
+    "dev": "concurrently -k -n API,WEB -c blue,green \"pnpm --filter @hookshield/api dev\" \"pnpm --filter @hookshield/web dev\"",
+    "typecheck": "pnpm -r typecheck",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:e2e": "playwright test",
+    "assets": "node scripts/generate-assets.mjs",
+    "audit": "pnpm audit --audit-level moderate"
+  },
+  "devDependencies": {
+    "@playwright/test": "1.61.1",
+    "@types/better-sqlite3": "7.6.13",
+    "@types/node": "26.1.1",
+    "concurrently": "10.0.3",
+    "sharp": "0.35.3",
+    "tsx": "4.23.1",
+    "typescript": "5.9.3",
+    "vitest": "4.1.10"
+  }
+}
