@@ -17,9 +17,11 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "assets": "node scripts/generate-assets.mjs",
-    "audit": "pnpm audit --audit-level moderate"
+    "audit": "pnpm audit --audit-level moderate",
+    "send:generic": "node scripts/send-generic-webhook.mjs"
   },
   "devDependencies": {
+    "@axe-core/playwright": "4.12.1",
     "@playwright/test": "1.61.1",
     "@types/better-sqlite3": "7.6.13",
     "@types/node": "26.1.1",

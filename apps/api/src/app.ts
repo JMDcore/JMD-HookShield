@@ -3,7 +3,6 @@ import cookie from "@fastify/cookie";
 import cors from "@fastify/cors";
 import helmet from "@fastify/helmet";
 import rateLimit from "@fastify/rate-limit";
-import rawBody from "fastify-raw-body";
 import { ZodError } from "zod";
 import {
   createEndpointSchema,
@@ -63,6 +62,7 @@ export async function buildApp(overrides: Partial<AppConfig> = {}): Promise<{
   await app.register(cors, {
     origin: config.webOrigin,
     credentials: true,
+    methods: ["GET", "HEAD", "POST", "PATCH", "DELETE", "OPTIONS"],
     allowedHeaders: ["content-type", "x-hookshield-csrf", "x-request-id"]
   });
   await app.register(helmet, {
@@ -79,12 +79,6 @@ export async function buildApp(overrides: Partial<AppConfig> = {}): Promise<{
     max: 600,
     timeWindow: "1 minute",
     allowList: (request) => request.url.startsWith("/hooks/")
-  });
-  await app.register(rawBody, {
-    field: "rawBody",
-    global: false,
-    encoding: false,
-    runFirst: true
   });
 
   const { requireAuth, requireCsrf } = makeAuthGuards(db, config);
@@ -112,7 +106,9 @@ export async function buildApp(overrides: Partial<AppConfig> = {}): Promise<{
 
   app.get("/health", async () => ({ status: "ok", mode: config.demoMode ? "demo" : "standard" }));
 
-  app.post("/api/auth/login", async (request, reply) => {
+  app.post("/api/auth/login", {
+    config: { rateLimit: { max: 10, timeWindow: "1 minute" } }
+  }, async (request, reply) => {
     const input = loginSchema.parse(request.body);
     const user = authenticateUser(db, input.email, input.password);
     if (!user) {
@@ -126,7 +122,9 @@ export async function buildApp(overrides: Partial<AppConfig> = {}): Promise<{
     return session;
   });
 
-  app.post("/api/auth/demo", async (request, reply) => {
+  app.post("/api/auth/demo", {
+    config: { rateLimit: { max: 30, timeWindow: "1 minute" } }
+  }, async (request, reply) => {
     if (!config.demoMode) {
       return reply.code(404).send(errorBody(request.id, "NOT_FOUND", "Resource not found"));
     }
@@ -229,25 +227,33 @@ export async function buildApp(overrides: Partial<AppConfig> = {}): Promise<{
     deleted: service.purgeRetention(request.authUser!.id)
   }));
 
-  app.post<{ Params: { publicId: string } }>(
-    "/hooks/:publicId",
-    { config: { rawBody: true }, bodyLimit: 2_097_152 },
-    async (request, reply) => {
-      const endpoint = service.getEndpointByPublicId(request.params.publicId);
-      if (!endpoint) {
-        return reply.code(404).send(errorBody(request.id, "NOT_FOUND", "Resource not found"));
+  await app.register(async (webhookApp) => {
+    webhookApp.removeAllContentTypeParsers();
+    webhookApp.addContentTypeParser(
+      "*",
+      { parseAs: "buffer", bodyLimit: 2_097_152 },
+      (_request, body, done) => done(null, body)
+    );
+    webhookApp.post<{ Params: { publicId: string } }>(
+      "/hooks/:publicId",
+      { bodyLimit: 2_097_152 },
+      async (request, reply) => {
+        const endpoint = service.getEndpointByPublicId(request.params.publicId);
+        if (!endpoint || !endpoint.enabled) {
+          return reply.code(404).send(errorBody(request.id, "NOT_FOUND", "Resource not found"));
+        }
+        const capturedBody = Buffer.isBuffer(request.body)
+          ? request.body
+          : Buffer.from(String(request.body ?? ""), "utf8");
+        const result = service.processWebhook(endpoint, capturedBody, request.headers);
+        return reply.code(result.httpStatus).send({
+          id: result.id,
+          status: result.status,
+          code: result.rejectionCode
+        });
       }
-      const capturedBody = Buffer.isBuffer(request.rawBody)
-        ? request.rawBody
-        : Buffer.from(request.rawBody ?? "", "utf8");
-      const result = service.processWebhook(endpoint, capturedBody, request.headers);
-      return reply.code(result.httpStatus).send({
-        id: result.id,
-        status: result.status,
-        code: result.rejectionCode
-      });
-    }
-  );
+    );
+  });
 
   app.setNotFoundHandler(async (request, reply) => {
     await reply.code(404).send(errorBody(request.id, "NOT_FOUND", "Resource not found"));

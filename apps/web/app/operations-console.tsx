@@ -93,8 +93,8 @@ export function OperationsConsole() {
   const [summary, setSummary] = useState<DashboardSummary | null>(null);
   const [statusFilter, setStatusFilter] = useState<DeliveryStatus | "all">("all");
   const [query, setQuery] = useState("");
-  const [inspectorTab, setInspectorTab] = useState<"checks" | "payload" | "headers" | "timeline">("checks");
-  const [dialog, setDialog] = useState<"simulator" | "endpoint" | "rotate" | null>(null);
+  const [inspectorTab, setInspectorTab] = useState<"checks" | "payload" | "headers" | "timeline" | "logs">("checks");
+  const [dialog, setDialog] = useState<"simulator" | "endpoint" | "rotate" | "settings" | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
@@ -297,7 +297,7 @@ export function OperationsConsole() {
         <section className="toolbar">
           <div className="search-box"><Search size={16} /><input aria-label="Search deliveries" value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Search event or delivery ID" /></div>
           <label className="select-box"><Filter size={15} /><select aria-label="Filter by status" value={statusFilter} onChange={(event) => setStatusFilter(event.target.value as DeliveryStatus | "all")}><option value="all">All states</option>{Object.entries(statusLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}</select></label>
-          {selectedEndpoint !== "all" && selectedEndpointRecord && <button className="button quiet" onClick={() => setDialog("rotate")}><KeyRound size={15} /> Rotate secret</button>}
+          {selectedEndpoint !== "all" && selectedEndpointRecord && <><button className="button quiet" onClick={() => setDialog("settings")}><Settings2 size={15} /> Endpoint settings</button><button className="button quiet" onClick={() => setDialog("rotate")}><KeyRound size={15} /> Rotate secret</button></>}
           <button className="icon-button" aria-label="Refresh deliveries" onClick={() => void refreshDeliveries()}><RefreshCw size={16} /></button>
         </section>
 
@@ -334,12 +334,14 @@ export function OperationsConsole() {
                   <TabButton id="payload" label="Payload" icon={<Braces size={15} />} active={inspectorTab} setActive={setInspectorTab} />
                   <TabButton id="headers" label="Headers" icon={<FileJson size={15} />} active={inspectorTab} setActive={setInspectorTab} />
                   <TabButton id="timeline" label="Timeline" icon={<Clock3 size={15} />} active={inspectorTab} setActive={setInspectorTab} />
+                  <TabButton id="logs" label="Logs" icon={<Activity size={15} />} active={inspectorTab} setActive={setInspectorTab} />
                 </div>
                 <div className="inspector-body">
                   {inspectorTab === "checks" && <ChecksPanel delivery={deliveryDetail} />}
                   {inspectorTab === "payload" && <CodePanel value={prettyPayload(deliveryDetail.payload)} label="payload" />}
                   {inspectorTab === "headers" && <HeadersPanel headers={deliveryDetail.headers} />}
                   {inspectorTab === "timeline" && <TimelinePanel delivery={deliveryDetail} />}
+                  {inspectorTab === "logs" && <LogsPanel delivery={deliveryDetail} />}
                 </div>
               </>
             ) : <div className="inspector-empty"><CircleGauge size={24} /><h2>Select a delivery</h2><p>Inspect the security decision, raw evidence, and processing history.</p></div>}
@@ -351,6 +353,7 @@ export function OperationsConsole() {
       {dialog === "simulator" && <SimulatorDialog endpoints={endpoints} initialEndpoint={selectedEndpointRecord?.id} onClose={() => setDialog(null)} onRun={simulate} />}
       {dialog === "endpoint" && <EndpointDialog api={api} onClose={() => setDialog(null)} onCreated={async () => { setDialog(null); await bootstrap(); setNotice("Endpoint created"); }} />}
       {dialog === "rotate" && selectedEndpointRecord && <RotateDialog endpoint={selectedEndpointRecord} api={api} onClose={() => setDialog(null)} onRotated={async () => { setDialog(null); await bootstrap(); setNotice("Secret rotated; previous version remains in transition"); }} />}
+      {dialog === "settings" && selectedEndpointRecord && <EndpointSettingsDialog endpoint={selectedEndpointRecord} api={api} onClose={() => setDialog(null)} onSaved={async (deleted) => { if (deleted) setSelectedEndpoint("all"); setDialog(null); await bootstrap(); setNotice(deleted ? "Endpoint deleted" : "Endpoint policy updated"); }} />}
       {notice && <div className="toast success" role="status"><Check size={16} />{notice}</div>}
       {error && auth && <div className="toast error" role="alert"><AlertTriangle size={16} /><span>{error}</span><button aria-label="Dismiss error" onClick={() => setError(null)}><X size={15} /></button></div>}
     </main>
@@ -379,7 +382,7 @@ function StatusText({ status }: { status: DeliveryStatus }) {
   return <span className={`status-text ${status}`}>{statusLabels[status]}</span>;
 }
 
-function TabButton({ id, label, icon, active, setActive }: { id: "checks" | "payload" | "headers" | "timeline"; label: string; icon: React.ReactNode; active: string; setActive: (id: "checks" | "payload" | "headers" | "timeline") => void }) {
+function TabButton({ id, label, icon, active, setActive }: { id: "checks" | "payload" | "headers" | "timeline" | "logs"; label: string; icon: React.ReactNode; active: string; setActive: (id: "checks" | "payload" | "headers" | "timeline" | "logs") => void }) {
   return <button role="tab" aria-selected={active === id} className={active === id ? "active" : ""} onClick={() => setActive(id)}>{icon}{label}</button>;
 }
 
@@ -398,6 +401,19 @@ function HeadersPanel({ headers }: { headers: Record<string, string> }) {
 
 function TimelinePanel({ delivery }: { delivery: DeliveryView }) {
   return <div className="timeline"><div><span /><section><b>Received at ingress</b><time>{new Date(delivery.receivedAt).toLocaleString()}</time><p>Raw bytes captured before deserialization.</p></section></div><div><span /><section><b>Security evaluation</b><time>{delivery.processedAt ? new Date(delivery.processedAt).toLocaleString() : "Pending"}</time><p>{delivery.checks.length} policy decisions recorded.</p></section></div>{delivery.timeline.map((entry) => <div key={entry.id}><span /><section><b>Processing attempt {entry.attemptNumber}</b><time>{new Date(entry.startedAt).toLocaleString()}</time><p>{entry.detail}</p></section></div>)}</div>;
+}
+
+function LogsPanel({ delivery }: { delivery: DeliveryView }) {
+  const lines = [
+    { time: delivery.receivedAt, level: "INFO", message: `ingress.received provider=${delivery.provider} bytes=${delivery.payloadBytes}` },
+    ...delivery.checks.map((check) => ({
+      time: delivery.processedAt ?? delivery.receivedAt,
+      level: check.status === "failed" ? "WARN" : "INFO",
+      message: `security.check name=${JSON.stringify(check.name)} result=${check.status}`
+    })),
+    { time: delivery.processedAt ?? delivery.receivedAt, level: delivery.status === "accepted" ? "INFO" : "WARN", message: `security.decision status=${delivery.status} code=${delivery.rejectionCode ?? "none"}` }
+  ];
+  return <div className="log-view" aria-label="Structured delivery logs">{lines.map((line, index) => <div key={`${line.message}-${index}`}><time>{new Date(line.time).toISOString()}</time><b className={line.level === "WARN" ? "warn" : ""}>{line.level}</b><code>{line.message}</code></div>)}</div>;
 }
 
 function EmptyDeliveries({ onSimulate }: { onSimulate: () => void }) {
@@ -430,4 +446,28 @@ function RotateDialog({ endpoint, api, onClose, onRotated }: { endpoint: Endpoin
   const [secret, setSecret] = useState("");
   const [transition, setTransition] = useState(3600);
   return <DialogFrame title="Rotate webhook secret" description={`Create version ${endpoint.secretVersion + 1} for ${endpoint.name}.`} onClose={onClose}><form onSubmit={async (event) => { event.preventDefault(); await api(`/api/endpoints/${endpoint.id}/rotate`, { method: "POST", body: JSON.stringify({ secret, transitionSeconds: transition }) }); await onRotated(); }}><div className="dialog-content form-grid"><label className="field full"><span>New secret</span><input autoFocus required minLength={16} maxLength={512} type="password" autoComplete="new-password" value={secret} onChange={(event) => setSecret(event.target.value)} placeholder="New provider secret" /></label><label className="field full"><span>Transition window</span><select value={transition} onChange={(event) => setTransition(Number(event.target.value))}><option value={0}>No overlap</option><option value={900}>15 minutes</option><option value={3600}>1 hour</option><option value={21600}>6 hours</option></select><small>The previous version is accepted only during this bounded window.</small></label></div><footer><button type="button" className="button quiet" onClick={onClose}>Cancel</button><button className="button primary">Rotate secret</button></footer></form></DialogFrame>;
+}
+
+function EndpointSettingsDialog({ endpoint, api, onClose, onSaved }: { endpoint: EndpointSummary; api: ApiCall; onClose: () => void; onSaved: (deleted: boolean) => Promise<void> }) {
+  const [name, setName] = useState(endpoint.name);
+  const [enabled, setEnabled] = useState(endpoint.enabled);
+  const [tolerance, setTolerance] = useState(endpoint.toleranceSeconds);
+  const [maxPayload, setMaxPayload] = useState(endpoint.maxPayloadBytes);
+  const [rateLimit, setRateLimit] = useState(endpoint.rateLimitPerMinute);
+  const [retention, setRetention] = useState(endpoint.retentionDays);
+  const [confirmDelete, setConfirmDelete] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  async function savePolicy() {
+    setSaving(true);
+    setFormError(null);
+    try {
+      await api(`/api/endpoints/${endpoint.id}`, { method: "PATCH", body: JSON.stringify({ name, enabled, toleranceSeconds: tolerance, maxPayloadBytes: maxPayload, rateLimitPerMinute: rateLimit, retentionDays: retention }) });
+      await onSaved(false);
+    } catch (caught) {
+      setFormError(caught instanceof Error ? caught.message : "Endpoint policy could not be saved.");
+      setSaving(false);
+    }
+  }
+  return <DialogFrame title="Endpoint settings" description={`Edit ingress policy for ${providerLabel(endpoint.provider)}. Secrets are managed separately.`} onClose={onClose}><form onSubmit={(event) => { event.preventDefault(); void savePolicy(); }}><div className="dialog-content form-grid"><label className="field full"><span>Endpoint name</span><input required minLength={2} maxLength={80} value={name} onChange={(event) => setName(event.target.value)} /></label><label className="toggle-field full"><input type="checkbox" checked={enabled} onChange={(event) => setEnabled(event.target.checked)} /><span><b>Accept deliveries</b><small>Disabled endpoints return the same public not-found response.</small></span></label><label className="field"><span>Freshness tolerance</span><input type="number" min={30} max={900} value={tolerance} onChange={(event) => setTolerance(Number(event.target.value))} /></label><label className="field"><span>Max payload bytes</span><input type="number" min={1024} max={1048576} value={maxPayload} onChange={(event) => setMaxPayload(Number(event.target.value))} /></label><label className="field"><span>Requests per minute</span><input type="number" min={1} max={600} value={rateLimit} onChange={(event) => setRateLimit(Number(event.target.value))} /></label><label className="field"><span>Retention days</span><input type="number" min={1} max={90} value={retention} onChange={(event) => setRetention(Number(event.target.value))} /></label><div className="danger-zone full"><div><b>Delete endpoint</b><small>Removes its deliveries, checks, attempts, and encrypted secret versions.</small></div>{confirmDelete ? <div className="confirm-delete"><span>Delete permanently?</span><button type="button" className="button danger" onClick={async () => { await api(`/api/endpoints/${endpoint.id}`, { method: "DELETE" }); await onSaved(true); }}>Confirm delete</button><button type="button" className="button quiet" onClick={() => setConfirmDelete(false)}>Keep endpoint</button></div> : <button type="button" className="button danger-outline" onClick={() => setConfirmDelete(true)}>Delete endpoint</button>}</div>{formError && <div className="form-error full" role="alert">{formError}</div>}</div><footer><button type="button" className="button quiet" onClick={onClose}>Cancel</button><button type="button" className="button primary" disabled={saving} onClick={() => void savePolicy()}>{saving ? "Saving…" : "Save policy"}</button></footer></form></DialogFrame>;
 }

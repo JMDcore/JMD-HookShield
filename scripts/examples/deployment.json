@@ -1,0 +1,6 @@
+{
+  "type": "deployment.completed",
+  "source": "hookshield-generic-cli",
+  "environment": "local-demo",
+  "result": "success"
+}
