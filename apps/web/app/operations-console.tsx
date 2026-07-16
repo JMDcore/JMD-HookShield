@@ -14,7 +14,6 @@ import {
   AlertTriangle,
   Braces,
   Check,
-  ChevronDown,
   CircleGauge,
   Clock3,
   Copy,
@@ -25,7 +24,6 @@ import {
   Menu,
   Plus,
   RefreshCw,
-  RotateCcw,
   Search,
   Send,
   Settings2,
@@ -244,7 +242,7 @@ export function OperationsConsole() {
           <Logo />
           <button className="icon-button mobile-only" aria-label="Close navigation" onClick={() => setMobileNav(false)}><X size={18} /></button>
         </div>
-        <div className="workspace-label">Operations workspace</div>
+        <div className="workspace-label">Security operations</div>
         <nav aria-label="Endpoint navigation">
           <button
             className={`nav-item ${selectedEndpoint === "all" ? "active" : ""}`}
@@ -279,19 +277,19 @@ export function OperationsConsole() {
       <section className="main-column">
         <header className="topbar">
           <button className="icon-button mobile-only" aria-label="Open navigation" onClick={() => setMobileNav(true)}><Menu size={19} /></button>
-          <div><span>Operations</span><ChevronDown size={13} /><b>Delivery inbox</b></div>
+          <div className="page-heading"><span>Operations / Webhooks</span><h1>Delivery inbox</h1></div>
           <div className="topbar-actions">
-            <span className="live-state"><i /> Ingress listening</span>
+            <span className="live-state"><i /> Ingress active</span>
             <a className="button quiet" href={`${API_URL}/api/audit/export`} target="_blank" rel="noreferrer"><Download size={15} /> Export audit</a>
             <button className="button primary" onClick={() => setDialog("simulator")}><Send size={15} /> Simulate</button>
           </div>
         </header>
 
         <section className="summary-strip" aria-label="Last 24 hours">
-          <Metric label="Deliveries · 24h" value={summary?.total24h ?? 0} detail="All evaluated requests" icon={<Activity size={16} />} />
-          <Metric label="Accepted" value={summary?.accepted24h ?? 0} detail={`${summary?.acceptanceRate ?? 0}% acceptance rate`} icon={<Check size={16} />} tone="success" />
-          <Metric label="Rejected" value={summary?.rejected24h ?? 0} detail="Stopped by policy" icon={<ShieldCheck size={16} />} tone="danger" />
-          <Metric label="Duplicate" value={summary?.duplicate24h ?? 0} detail="Idempotency protected" icon={<RotateCcw size={16} />} tone="warning" />
+          <Metric label="Deliveries · 24h" value={summary?.total24h ?? 0} detail="All evaluated requests" />
+          <Metric label="Accepted" value={summary?.accepted24h ?? 0} detail={`${summary?.acceptanceRate ?? 0}% acceptance rate`} tone="success" />
+          <Metric label="Rejected" value={summary?.rejected24h ?? 0} detail="Stopped by policy" tone="danger" />
+          <Metric label="Duplicate" value={summary?.duplicate24h ?? 0} detail="Idempotency protected" tone="warning" />
         </section>
 
         <section className="toolbar">
@@ -303,7 +301,7 @@ export function OperationsConsole() {
 
         <section className="workbench">
           <div className="delivery-pane">
-            <div className="pane-heading"><div><h1>Deliveries</h1><span>{deliveries.length} matching events</span></div><span className="column-hint">Decision</span></div>
+            <div className="pane-heading"><div><h2>Deliveries</h2><span>{deliveries.length} matching events</span></div><span className="column-hint">Decision</span></div>
             <div className="delivery-list" ref={listRef} role="listbox" tabIndex={0} aria-label="Webhook deliveries" onKeyDown={handleListKeyDown}>
               {deliveries.length ? deliveries.map((delivery) => (
                 <button
@@ -336,7 +334,7 @@ export function OperationsConsole() {
                   <TabButton id="timeline" label="Timeline" icon={<Clock3 size={15} />} active={inspectorTab} setActive={setInspectorTab} />
                   <TabButton id="logs" label="Logs" icon={<Activity size={15} />} active={inspectorTab} setActive={setInspectorTab} />
                 </div>
-                <div className="inspector-body">
+                <div className="inspector-body" tabIndex={0} aria-label="Inspector evidence">
                   {inspectorTab === "checks" && <ChecksPanel delivery={deliveryDetail} />}
                   {inspectorTab === "payload" && <CodePanel value={prettyPayload(deliveryDetail.payload)} label="payload" />}
                   {inspectorTab === "headers" && <HeadersPanel headers={deliveryDetail.headers} />}
@@ -370,12 +368,12 @@ function ProviderIcon({ provider }: { provider: Provider }) {
   return <Webhook size={17} />;
 }
 
-function Metric({ label, value, detail, icon, tone = "default" }: { label: string; value: number; detail: string; icon: React.ReactNode; tone?: string }) {
-  return <div className={`metric ${tone}`}><span className="metric-icon">{icon}</span><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></div>;
+function Metric({ label, value, detail, tone = "default" }: { label: string; value: number; detail: string; tone?: string }) {
+  return <div className={`metric ${tone}`}><i aria-hidden="true" /><div><span>{label}</span><strong>{value}</strong><small>{detail}</small></div></div>;
 }
 
 function StatusMark({ status }: { status: DeliveryStatus }) {
-  return <span className={`status-mark ${status}`}>{status === "accepted" ? <Check size={14} /> : status === "duplicate" ? <Copy size={13} /> : <X size={13} />}</span>;
+  return <span className={`status-mark ${status}`} aria-hidden="true" />;
 }
 
 function StatusText({ status }: { status: DeliveryStatus }) {

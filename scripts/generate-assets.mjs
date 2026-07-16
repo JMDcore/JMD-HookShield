@@ -7,21 +7,21 @@ const linkedin = new URL("linkedin/", assets);
 await mkdir(linkedin, { recursive: true });
 
 const palette = {
-  canvas: "#f3f4f6",
-  surface: "#ffffff",
-  ink: "#182235",
-  muted: "#4f5c70",
-  faint: "#596679",
-  line: "#d4d9e0",
-  navy: "#17243b",
-  teal: "#267a78",
-  tealSoft: "#e8f3f2",
-  green: "#28704f",
-  greenSoft: "#eaf4ee",
-  amber: "#956517",
-  amberSoft: "#faf1df",
-  red: "#a53d42",
-  redSoft: "#f9e9ea"
+  canvas: "#f3f3ef",
+  surface: "#fdfdfb",
+  ink: "#20231f",
+  muted: "#596159",
+  faint: "#60675f",
+  line: "#dedfd8",
+  navy: "#20231f",
+  teal: "#245b49",
+  tealSoft: "#edf5ef",
+  green: "#2d7052",
+  greenSoft: "#edf5ef",
+  amber: "#8a631d",
+  amberSoft: "#faf4e7",
+  red: "#98464b",
+  redSoft: "#faefef"
 };
 
 function svgFrame(width, height, body) {
@@ -208,11 +208,11 @@ for (const [index, kicker, titles, lines, label, colour] of slides) {
 
 const dashboardPath = fileURLToPath(new URL("screenshots/dashboard.png", assets));
 await sharp(dashboardPath)
-  .extract({ left: 224, top: 179, width: 547, height: 631 })
+  .extract({ left: 244, top: 204, width: 514, height: 681 })
   .png({ quality: 92, compressionLevel: 9 })
   .toFile(fileURLToPath(new URL("screenshots/delivery-inbox.png", assets)));
 await sharp(dashboardPath)
-  .extract({ left: 771, top: 179, width: 669, height: 631 })
+  .extract({ left: 758, top: 204, width: 682, height: 681 })
   .png({ quality: 92, compressionLevel: 9 })
   .toFile(fileURLToPath(new URL("screenshots/delivery-inspector.png", assets)));
 
