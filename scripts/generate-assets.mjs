@@ -208,11 +208,11 @@ for (const [index, kicker, titles, lines, label, colour] of slides) {
 
 const dashboardPath = fileURLToPath(new URL("screenshots/dashboard.png", assets));
 await sharp(dashboardPath)
-  .extract({ left: 246, top: 162, width: 443, height: 558 })
+  .extract({ left: 224, top: 179, width: 547, height: 631 })
   .png({ quality: 92, compressionLevel: 9 })
   .toFile(fileURLToPath(new URL("screenshots/delivery-inbox.png", assets)));
 await sharp(dashboardPath)
-  .extract({ left: 689, top: 215, width: 591, height: 505 })
+  .extract({ left: 771, top: 179, width: 669, height: 631 })
   .png({ quality: 92, compressionLevel: 9 })
   .toFile(fileURLToPath(new URL("screenshots/delivery-inspector.png", assets)));
 
